@@ -1,5 +1,6 @@
 name = "cedar-style"
 version = "0.1.0"
+license = "Apache-2.0"
 defaultTargets = ["Cedar", "CedarProofs", "cedar-style"]
 
 [[lean_lib]]
