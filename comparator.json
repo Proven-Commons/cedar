@@ -1,0 +1,11 @@
+{
+  "challenge_module": "Cedar.Spec",
+  "solution_module": "Cedar.Proofs",
+  "theorem_names": [
+    "Cedar.Spec.authorize_iff",
+    "Cedar.Spec.forbid_denies",
+    "Cedar.Spec.default_denies",
+    "Cedar.Spec.order_invariant"
+  ],
+  "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"]
+}

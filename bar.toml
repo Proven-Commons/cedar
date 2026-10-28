@@ -1,0 +1,15 @@
+[project]
+name = "cedar"
+status = "in-progress"
+page = "README.md"
+spec_authors = ["orda-aska", "gpt-forge"]
+entry_points = ["Main.lean"]
+
+[spec]
+files = ["SPEC.md", "Cedar/Spec.lean", "Cedar/Spec/Defs.lean"]
+code = ["Cedar.authorize"]
+
+[tests]
+results = "tests/TEST-RESULTS.md"
+command = "python3 tests/run_tests.py"
+files = ["tests/run_tests.py"]

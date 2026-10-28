@@ -1,24 +1,54 @@
-# cedar
+# Cedar-style policy decisions
 
-A Lean policy engine in the style of AWS Cedar. This is a Proven Commons project: it rebuilds a widely used rule in Lean and proves the new code follows its written specification. It is not AWS Cedar. It is a new engine that follows the same shape.
+A small Lean library decides whether a request is allowed by a list of permit and forbid policies. Scopes match an exact principal, action, or resource string, or every string. A matching forbid denies; without a matching permit the result also denies.
 
-Status: not verified. No code has landed yet. Plan issue 1 holds the first slice, and it is unclaimed. The specification has not been approved by a reviewer, so do not call this verified.
+This is a Cedar-style engine, not AWS Cedar.
 
-## Wave 1
+Status: in progress. The specification has not received independent approval, so this project is not verified.
 
-This is one of the three Wave 1 projects in the founding brief, months 4 to 9, one squad each. The other two are the SQLite file reader and the Redis protocol parser. Redis already has a repo.
+## Run it
 
-## Claims to prove
+Needs Lean 4.35.0, pinned in `lean-toolchain`.
 
-- A satisfied forbid gives a deny.
-- No satisfied permit gives a deny.
-- Policy order does not change the decision.
+```sh
+lake build
+printf 'alice read document;permit alice read *\n' | .lake/build/bin/cedar-style
+printf 'alice read document;permit * * *;forbid alice read document\n' | .lake/build/bin/cedar-style
+```
 
-## What is not in this project
+The answers are `allow` and `deny`. The tool reads one request per line. Semicolons separate policies, a single space separates tokens, and `*` in a policy scope means wildcard. See [SPEC.md](SPEC.md) for the complete protocol and library semantics.
 
-- A full AWS Cedar implementation. This is a Cedar style engine, not a copy of AWS Cedar.
-- Any claim about a deployed authorization service.
+## What is proved
 
-## Layout, when the first slice lands
+The challenge statements in `Cedar/Spec.lean` are proved in `Cedar/Proofs.lean`:
 
-The layout follows the Proven Commons template in the mission repo, under bar/template. Spec.lean holds the statements a reviewer approves. Proofs.lean holds the proofs under the same names. Main.lean holds the command line tool used by the tests. The bar check runs in CI on every change.
+- `Cedar.Spec.authorize_iff`: the decision allows exactly when some permit matches and no forbid matches.
+- `Cedar.Spec.forbid_denies`: a satisfied forbid denies.
+- `Cedar.Spec.default_denies`: without a satisfied permit the decision denies.
+- `Cedar.Spec.order_invariant`: permuting the policy list preserves the decision.
+
+The independent relational predicates and shared types live in `Cedar/Spec/Defs.lean`. `lake comparator --paranoid` compares each proof with its challenge statement and checks its axioms and kernels. The intentional challenge placeholders are not production proofs.
+
+## What is not proved
+
+The command-line parser, line endings, and output are tested rather than proved. The CLI supports nonempty tokens without whitespace or semicolons and cannot express literal `*` scopes; the library has no such string restriction.
+
+There is no AWS Cedar parser or compatibility guarantee, entity hierarchy, expression language, schema, condition evaluation, policy validation, authentication, or integration with a deployed service. This library makes a decision from supplied strings and policies; it does not establish who supplied them.
+
+AWS Cedar already proves the three plan properties in [cedar-spec](https://github.com/cedar-policy/cedar-spec/tree/main/cedar-lean). This independent educational slice claims no novel authorization result. [SPEC.md](SPEC.md) records the prior work and exact scope.
+
+## What you must trust
+
+The Lean kernel, compiler, runtime, standard library, and hardware must behave correctly. The Python model and its test generator can contain mistakes; differential tests supplement the proofs and do not prove the protocol correct. No external dependencies or foreign functions are used by the library.
+
+## Re-check
+
+```sh
+lake build
+lake comparator --paranoid
+python3 tests/run_tests.py
+```
+
+The comparator's sandbox needs Linux namespaces and bubblewrap. On macOS, local review used `--inadvisably-no-sandbox`; that checks the same exported statements and kernels without process isolation. CI runs the sandboxed command. [Test results](tests/TEST-RESULTS.md) record exhaustive small policy lists, generated lists, permutations, duplicates, and malformed requests.
+
+Licensed under Apache 2.0; see [LICENSE](LICENSE).
