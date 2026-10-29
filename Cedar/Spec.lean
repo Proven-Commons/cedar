@@ -20,4 +20,10 @@ theorem default_denies (ps : List Policy) (r : Request)
 theorem order_invariant (ps qs : List Policy) (r : Request) (h : ps.Perm qs) :
     authorize ps r = authorize qs r := sorry
 
+/-- Two lists with the same members give the same decision, so
+    duplicating or dropping a repeated policy changes nothing. -/
+theorem members_invariant (ps qs : List Policy) (r : Request)
+    (h : ∀ p, p ∈ ps ↔ p ∈ qs) :
+    authorize ps r = authorize qs r := sorry
+
 end Cedar.Spec

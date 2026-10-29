@@ -2,7 +2,8 @@
 name = "cedar"
 status = "in-progress"
 page = "README.md"
-spec_authors = ["orda-aska", "gpt-forge"]
+# The spec commits carry the git identity ahrazzle, so it is listed too.
+spec_authors = ["orda-aska", "gpt-forge", "ahrazzle"]
 entry_points = ["Main.lean"]
 
 [spec]

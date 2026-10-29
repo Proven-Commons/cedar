@@ -39,4 +39,14 @@ theorem order_invariant (ps qs : List Policy) (r : Request) (h : ps.Perm qs) :
     authorize ps r = authorize qs r := by
   simp only [authorize, h.any_eq]
 
+theorem members_invariant (ps qs : List Policy) (r : Request)
+    (h : ∀ p, p ∈ ps ↔ p ∈ qs) :
+    authorize ps r = authorize qs r := by
+  have key : ∀ e, ps.any (satisfied e r) = qs.any (satisfied e r) := by
+    intro e
+    apply Bool.eq_iff_iff.mpr
+    simp only [List.any_eq_true]
+    exact ⟨fun ⟨p, hp, hs⟩ => ⟨p, (h p).mp hp, hs⟩, fun ⟨p, hp, hs⟩ => ⟨p, (h p).mpr hp, hs⟩⟩
+  simp only [authorize, key]
+
 end Cedar.Spec

@@ -18,12 +18,17 @@ The challenge statements are in `Cedar/Spec.lean`; proofs of those same statemen
 | Any matching forbid denies, including alongside matching permits | `Cedar.Spec.forbid_denies` |
 | No matching permit means deny | `Cedar.Spec.default_denies` |
 | A permutation of the policy list preserves the decision | `Cedar.Spec.order_invariant` |
+| Two policy lists with the same members give the same decision, so duplicates change nothing | `Cedar.Spec.members_invariant` |
+
+`authorize_iff` is the statement that pins the decision down: a program that always denies meets the other four, and only `authorize_iff` rules it out.
 
 The proofs quantify over every finite list and every request, including empty strings and all strings representable by Lean. The CLI below intentionally supports a smaller token syntax. Its parsing, line handling, and printing are tested, not proved.
 
 ## Command-line protocol
 
-The executable reads one request per line and prints `allow`, `deny`, or `error`. The first segment contains three tokens: principal, action, resource. Subsequent segments, separated by semicolons, each contain four tokens: effect, principal scope, action scope, resource scope. Exactly one ASCII space separates tokens; tokens are nonempty and contain no whitespace or semicolon. Effects are `permit` and `forbid`.
+The executable reads one request per line and prints `allow`, `deny`, or `error`. The first segment contains three tokens: principal, action, resource. Subsequent segments, separated by semicolons, each contain four tokens: effect, principal scope, action scope, resource scope. Exactly one ASCII space separates tokens; tokens are nonempty and contain no whitespace or semicolon. Whitespace means the characters with Unicode's White_Space property: U+0009 to U+000D, U+0020, U+0085, U+00A0, U+1680, U+2000 to U+200A, U+2028, U+2029, U+202F, U+205F and U+3000. Effects are `permit` and `forbid`, in lower case.
+
+Input is UTF-8. The executable reads bytes, and a line that is not well-formed UTF-8 (for example a lone `0xFF`, a truncated sequence, an overlong form, or an encoded surrogate) is malformed and prints `error`. So two different byte strings never compare as the same token.
 
 A policy scope token `*` is a wildcard. Every other scope token is an exact string. The CLI cannot express a literal `*` scope, or empty or whitespace-containing fields, though the library can. A request's `*` token is a literal request string.
 
@@ -39,4 +44,4 @@ These produce `allow`, `deny`, and `deny`. Malformed requests, including empty l
 
 ## Existing work
 
-The AWS Cedar project already proves forbid precedence, default deny, and order independence in its [Lean authorization model](https://github.com/cedar-policy/cedar-spec/blob/main/cedar-lean/Cedar/Thm/Authorization.lean). Its [verification paper](https://arxiv.org/abs/2407.01688) describes the larger system. This slice repeats those elementary decision properties in a small independent model. It claims no new result and no compatibility with the AWS implementation. Its purpose is a bounded executable foundation for this repository's plan.
+The AWS Cedar project already proves each of these properties in its [Lean authorization model](https://github.com/cedar-policy/cedar-spec/blob/5a5f00b/cedar-lean/Cedar/Thm/Authorization.lean) (cedar-spec commit `5a5f00b`, `cedar-lean/Cedar/Thm/Authorization.lean`): `forbid_trumps_permit` (forbid precedence), `default_deny`, `allowed_iff_explicitly_permitted_and_not_denied` (the counterpart of `authorize_iff`), and `order_and_dup_independent` (order and duplicates, the counterpart of `order_invariant` and `members_invariant`). Its [verification paper](https://arxiv.org/abs/2407.01688) describes the larger system. This slice repeats those elementary decision properties in a small independent model. It claims no new result and no compatibility with the AWS implementation. Its purpose is a bounded executable foundation for this repository's plan.

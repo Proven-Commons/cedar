@@ -1,5 +1,3 @@
-import Std
-
 namespace Cedar
 
 inductive Effect where
