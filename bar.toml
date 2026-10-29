@@ -1,0 +1,16 @@
+[project]
+name = "cedar"
+status = "in-progress"
+page = "README.md"
+# The spec commits carry the git identity ahrazzle, so it is listed too.
+spec_authors = ["orda-aska", "gpt-forge", "ahrazzle"]
+entry_points = ["Main.lean"]
+
+[spec]
+files = ["SPEC.md", "Cedar/Spec.lean", "Cedar/Spec/Defs.lean"]
+code = ["Cedar.authorize"]
+
+[tests]
+results = "tests/TEST-RESULTS.md"
+command = "python3 tests/run_tests.py"
+files = ["tests/run_tests.py"]

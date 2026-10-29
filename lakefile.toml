@@ -1,0 +1,20 @@
+name = "cedar-style"
+version = "0.1.0"
+license = "Apache-2.0"
+defaultTargets = ["Cedar", "CedarProofs", "cedar-style"]
+
+[[lean_lib]]
+name = "Cedar"
+roots = ["Cedar"]
+
+[[lean_lib]]
+name = "CedarSpec"
+roots = ["Cedar.Spec"]
+
+[[lean_lib]]
+name = "CedarProofs"
+roots = ["Cedar.Proofs"]
+
+[[lean_exe]]
+name = "cedar-style"
+root = "Main"
