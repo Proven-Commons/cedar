@@ -7,9 +7,12 @@ decision rule. Input is sent as bytes, so lines that are not UTF-8 reach
 the executable unchanged.
 """
 import itertools
+import os
 import platform
 import random
+import select
 import subprocess
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -161,25 +164,60 @@ def main():
     eof = subprocess.run([str(ROOT / '.lake/build/bin/cedar-style')], input=b'a b c;permit * * *',
                          capture_output=True, timeout=10)
     assert eof.returncode == 0 and eof.stdout == b'allow\n', eof
+    # A caller that sends one request and keeps the pipe open must get the
+    # answer before EOF. `read` of a large buffer waits for that many bytes
+    # or for EOF, so this fails closed as a hang rather than as a wrong word.
+    interactive = subprocess.Popen(
+        [str(ROOT / '.lake/build/bin/cedar-style')],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
+    interactive_timeout = 2.0
+    try:
+        assert interactive.stdin is not None and interactive.stdout is not None
+        interactive.stdin.write(b'a b c;permit * * *\n')
+        interactive.stdin.flush()
+        deadline = time.monotonic() + interactive_timeout
+        got = b''
+        while b'\n' not in got:
+            remaining = deadline - time.monotonic()
+            assert remaining > 0, f'no answer within {interactive_timeout}s while stdin stayed open; got {got!r}'
+            ready, _, _ = select.select([interactive.stdout], [], [], remaining)
+            assert ready, f'no answer within {interactive_timeout}s while stdin stayed open; got {got!r}'
+            chunk = os.read(interactive.stdout.fileno(), 4096)
+            assert chunk, f'stdout closed before an answer; got {got!r}'
+            got += chunk
+        assert got == b'allow\n', got
+        assert interactive.poll() is None, 'cedar-style exited before stdin closed'
+    finally:
+        if interactive.stdin is not None:
+            interactive.stdin.close()
+        try:
+            interactive.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            interactive.kill()
+            interactive.wait(timeout=5)
+            raise
+    err = interactive.stderr.read() if interactive.stderr is not None else b''
+    assert interactive.returncode == 0, (interactive.returncode, err)
     lean = subprocess.check_output(['lean', '--version'], text=True).strip()
     report = f'''# Test results
 
 - Oracle: finite policy semantics in Python {platform.python_version()}, evaluated by a direct rule walk, behind a reference parser written from SPEC.md
 - Lean: {lean}
 - Seed: {SEED}
-- Inputs: {len(cases) + 1}
+- Inputs: {len(cases) + 2}
 - Exhaustive: {exhaustive} lines: 8 requests against empty policies, every single rule, and all ordered pairs of 16 rules
 - Generated policy lists: 5000, scopes biased toward the request's values, with one shuffled copy each and duplicate-rule checks for nonempty lists; {matched} of 5000 have at least one matching policy
 - Malformed requests: {len(malformed)}, among them Unicode whitespace inside tokens and lines that are not UTF-8
 - Byte-level mutations of generated lines: {mutations}, of which {mutated_errors} are malformed by the reference parser
 - Line endings: LF, CR LF, and a final request without LF
+- Interactive: one request on a pipe that stays open; the answer arrives within 2 seconds, before stdin is closed
 - Failures: 0
 
 This run checks the executable against the independent Python rule interpreter.
 It does not establish AWS Cedar compatibility. Run the comparator separately to check proofs.
 '''
     (ROOT / 'tests/TEST-RESULTS.md').write_text(report)
-    print(f'{len(cases) + 1} inputs, 0 failures')
+    print(f'{len(cases) + 2} inputs, 0 failures')
 
 
 if __name__ == '__main__':

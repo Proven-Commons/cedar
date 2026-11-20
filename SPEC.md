@@ -40,7 +40,7 @@ alice read document;permit * * *;forbid alice read document
 alice read document
 ```
 
-These produce `allow`, `deny`, and `deny`. Malformed requests, including empty lines, print `error`. Lines may end in LF or CR LF; a final line needs no line ending. There is no persistent state between lines.
+These produce `allow`, `deny`, and `deny`. Malformed requests, including empty lines, print `error`. Lines may end in LF or CR LF; a final line needs no line ending. A finished line is answered as soon as it has been read. The executable does not wait for more input, for a full buffer, or for end of file before printing that answer, so a caller may keep the input stream open. There is no persistent state between lines.
 
 ## Existing work
 

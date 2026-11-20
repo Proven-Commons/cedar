@@ -16,7 +16,7 @@ printf 'alice read document;permit alice read *\n' | .lake/build/bin/cedar-style
 printf 'alice read document;permit * * *;forbid alice read document\n' | .lake/build/bin/cedar-style
 ```
 
-The answers are `allow` and `deny`. The tool reads one request per line. Semicolons separate policies, a single space separates tokens, and `*` in a policy scope means wildcard. See [SPEC.md](SPEC.md) for the complete protocol and library semantics.
+The answers are `allow` and `deny`. The tool reads one request per line and answers that line as soon as it arrives, so a pipe that stays open still receives the answer. Semicolons separate policies, a single space separates tokens, and `*` in a policy scope means wildcard. See [SPEC.md](SPEC.md) for the complete protocol and library semantics.
 
 ## What is proved
 

@@ -50,29 +50,37 @@ def answer (line : ByteArray) (endedByLF : Bool) : String :=
   | some false => "deny"
   | none => "error"
 
-/-- Answers each complete line in `buf` from `start`, scanning from `i`.
-    Gives where the unfinished last line starts. -/
-partial def answerLines (stdout : IO.FS.Stream) (buf : ByteArray) (start i : Nat) :
-    IO Nat := do
-  if i ≥ buf.size then return start
-  if buf[i]! == 10 then
-    stdout.putStrLn (answer (buf.extract start i) true)
-    stdout.flush
-    answerLines stdout buf (i + 1) (i + 1)
-  else
-    answerLines stdout buf start (i + 1)
+/-- Answer each line as its LF arrives.
 
-partial def serve (stdin stdout : IO.FS.Stream) (pending : ByteArray) : IO Unit := do
-  let chunk ← stdin.read 65536
-  if chunk.isEmpty then
-    -- A final line needs no line ending.
-    if !pending.isEmpty then
-      stdout.putStrLn (answer pending false)
-      stdout.flush
-    return
-  let buf := pending ++ chunk
-  let start ← answerLines stdout buf 0 0
-  serve stdin stdout (buf.extract start buf.size)
+    `Stream.read` is C `fread`, which returns only after it has every
+    requested byte or it reaches EOF. A 64 KiB read therefore waits for
+    a full buffer before the first line can be answered, and a caller
+    that sends one request and keeps the pipe open hangs. One byte is
+    enough: stdio still fills its own buffer underneath, and the line is
+    answered at the LF. A final line with no line ending is answered at
+    EOF, as SPEC.md requires. -/
+def serve (stdin stdout : IO.FS.Stream) : IO Unit := do
+  let mut pending := ByteArray.empty
+  repeat
+    let chunk ← stdin.read 1
+    if chunk.isEmpty then
+      if !pending.isEmpty then
+        stdout.putStrLn (answer pending false)
+        stdout.flush
+      break
+    else
+      -- `read 1` yields one byte. Consume the whole chunk so a larger
+      -- read cannot drop bytes that arrived together.
+      let mut i := 0
+      while i < chunk.size do
+        let b := chunk[i]!
+        i := i + 1
+        if b == 10 then
+          stdout.putStrLn (answer pending true)
+          stdout.flush
+          pending := ByteArray.empty
+        else
+          pending := pending.push b
 
 def main : IO Unit := do
-  serve (← IO.getStdin) (← IO.getStdout) ByteArray.empty
+  serve (← IO.getStdin) (← IO.getStdout)
